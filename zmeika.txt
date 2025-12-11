@@ -1,0 +1,207 @@
+#include <iostream>
+#include <conio.h>
+#include <cstdlib>
+#include <windows.h>
+#include <ctime>
+#include <vector>
+
+using namespace std;
+
+struct Point {
+  int horizontalPosition;
+  int verticalPosition;
+};
+
+void gotoxy(int horizontalCoordinate, int verticalCoordinate) {
+  COORD coord;
+  coord.X = horizontalCoordinate;
+  coord.Y = verticalCoordinate;
+
+  SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
+
+Point generateFood(int fieldSize, vector<Point> snake) {
+  Point foodPosition;
+  bool foodOnSnake;
+  
+  do {
+    foodOnSnake = false;
+    foodPosition.horizontalPosition = rand() % (fieldSize - 2) + 1;
+    foodPosition.verticalPosition = rand() % (fieldSize - 2) + 1;
+    
+    for (size_t segmentIndex = 0; segmentIndex < snake.size(); ++segmentIndex) {
+      if (foodPosition.horizontalPosition == snake[segmentIndex].horizontalPosition && 
+          foodPosition.verticalPosition == snake[segmentIndex].verticalPosition) {
+        foodOnSnake = true;
+
+        break;
+      }
+    }
+  } while (foodOnSnake);
+  
+  return foodPosition;
+}
+
+void drawField(int fieldSize, vector<Point> snake, Point foodPosition) {
+  for (int columnIndex = 0; columnIndex < fieldSize; ++columnIndex) {
+    gotoxy(columnIndex * 2, 0);
+
+    cout << "# ";
+  }
+  
+  for (int rowIndex = 1; rowIndex < fieldSize - 1; ++rowIndex) {
+    gotoxy(0, rowIndex);
+
+    cout << "#";
+
+    gotoxy((fieldSize - 1) * 2, rowIndex);
+
+    cout << "#";
+  }
+  
+  if (fieldSize > 1) {
+    for (int columnIndex = 0; columnIndex < fieldSize; ++columnIndex) {
+      gotoxy(columnIndex * 2, fieldSize - 1);
+
+      cout << "# ";
+    }
+  }
+  
+  gotoxy(foodPosition.horizontalPosition * 2, foodPosition.verticalPosition);
+
+  cout << "O";
+  
+  for (size_t segmentIndex = 0; segmentIndex < snake.size(); ++segmentIndex) {
+    gotoxy(snake[segmentIndex].horizontalPosition * 2, snake[segmentIndex].verticalPosition);
+    if (segmentIndex == 0) {
+      cout << "@";
+    } else {
+      cout << "*";
+    }
+  }
+}
+
+void drawScore(int fieldSize, int currentScore) {
+  gotoxy(0, fieldSize + 1);
+
+  cout << " Score: " << currentScore;
+}
+
+int main() {
+  srand(time(0));
+  
+  int fieldSize;
+
+  cout << "Enter the field size: ";
+  cin >> fieldSize;
+
+  vector<Point> snake;
+  Point snakeHead;
+
+  snakeHead.horizontalPosition = fieldSize / 2;
+  snakeHead.verticalPosition = fieldSize / 2;
+
+  snake.push_back(snakeHead);
+  
+  Point foodPosition = generateFood(fieldSize, snake);
+  
+  int currentScore = 0;
+  bool gameOver = false;
+  char currentDirection = 'd';
+  
+  HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+  CONSOLE_CURSOR_INFO cursorInfo;
+  GetConsoleCursorInfo(consoleHandle, &cursorInfo);
+  cursorInfo.bVisible = false;
+  SetConsoleCursorInfo(consoleHandle, &cursorInfo);
+  
+  system("cls");
+  drawField(fieldSize, snake, foodPosition);
+  drawScore(fieldSize, currentScore);
+  
+  char pressedKey;
+  Point newHeadPosition;
+  size_t segmentIndex;
+  
+  while (!gameOver) {
+    if (_kbhit()) {
+      pressedKey = _getch();
+      if (pressedKey == 'a' || pressedKey == 'd' || 
+          pressedKey == 'w' || pressedKey == 's') {
+        currentDirection = pressedKey;
+      } else if (pressedKey == 27) {
+        break;
+      }
+    }
+    
+    newHeadPosition = snake[0];
+    
+    switch (currentDirection) {
+      case 'a': --newHeadPosition.horizontalPosition; break;
+      case 'd': ++newHeadPosition.horizontalPosition; break;
+      case 'w': --newHeadPosition.verticalPosition; break;
+      case 's': ++newHeadPosition.verticalPosition; break;
+    }
+    
+    if (newHeadPosition.horizontalPosition <= 0 || newHeadPosition.horizontalPosition >= fieldSize - 1 || 
+        newHeadPosition.verticalPosition <= 0 || newHeadPosition.verticalPosition >= fieldSize - 1) {
+      gameOver = true;
+
+      break;
+    }
+    
+    for (segmentIndex = 0; segmentIndex < snake.size(); ++segmentIndex) {
+      if (newHeadPosition.horizontalPosition == snake[segmentIndex].horizontalPosition && 
+          newHeadPosition.verticalPosition == snake[segmentIndex].verticalPosition) {
+        gameOver = true;
+
+        break;
+      }
+    }
+    
+    if (gameOver) break;
+    
+    if (!(newHeadPosition.horizontalPosition == foodPosition.horizontalPosition && 
+          newHeadPosition.verticalPosition == foodPosition.verticalPosition)) {
+      gotoxy(snake.back().horizontalPosition * 2, snake.back().verticalPosition);
+
+      cout << "  ";
+
+      snake.pop_back();
+    } else {
+      ++currentScore;
+      foodPosition = generateFood(fieldSize, snake);
+
+      drawScore(fieldSize, currentScore);
+    }
+    
+    snake.insert(snake.begin(), newHeadPosition);
+    
+    gotoxy(foodPosition.horizontalPosition * 2, foodPosition.verticalPosition);
+    cout << "O";
+    
+    for (segmentIndex = 0; segmentIndex < snake.size(); ++segmentIndex) {
+      gotoxy(snake[segmentIndex].horizontalPosition * 2, snake[segmentIndex].verticalPosition);
+
+      if (segmentIndex == 0) {
+        cout << "@";
+      } else {
+        cout << "*";
+      }
+    }
+    
+    Sleep(150);
+  }
+  
+  cursorInfo.bVisible = true;
+
+  SetConsoleCursorInfo(consoleHandle, &cursorInfo);
+  
+  gotoxy(0, fieldSize + 3);
+  cout << " Game Over! " << endl
+       << " Final score: " << currentScore << endl;
+
+  _getch();
+  
+  return 0;
+}
