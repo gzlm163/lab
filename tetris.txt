@@ -1,0 +1,365 @@
+#include <iostream>
+#include <conio.h>
+#include <windows.h>
+#include <ctime>
+#include <cstdlib>
+
+using namespace std;
+
+int currentPiece[4][4];
+int currentPositionX;
+int currentPositionY;
+int currentPieceType;
+int currentScore;
+bool isGameOver;
+
+enum {
+  fieldWidth = 10,
+  fieldHeight = 20
+};
+
+int field[fieldHeight][fieldWidth];
+
+int pieces[7][4][4] = {
+  {
+    {0, 0, 0, 0},
+    {1, 1, 1, 1},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0}
+  },
+  {
+    {0, 0, 0, 0},
+    {2, 2, 2, 0},
+    {0, 0, 0, 0},
+    {0, 0, 0, 0}
+  },
+  {
+    {0, 0, 0, 0},
+    {3, 3, 3, 0},
+    {0, 3, 0, 0},
+    {0, 0, 0, 0}
+  },
+  {
+    {0, 0, 0, 0},
+    {4, 4, 0, 0},
+    {0, 4, 4, 0},
+    {0, 0, 0, 0}
+  },
+  {
+    {0, 0, 0, 0},
+    {5, 5, 0, 0},
+    {0, 5, 5, 0},
+    {0, 0, 0, 0}
+  },
+  {
+    {0, 0, 0, 0},
+    {6, 6, 6, 0},
+    {0, 0, 6, 0},
+    {0, 0, 0, 0}
+  },
+  {
+    {0, 0, 0, 0},
+    {7, 7, 7, 0},
+    {7, 0, 0, 0},
+    {0, 0, 0, 0}
+  }
+};
+
+void initializeField() {
+  int x;
+  int y;
+
+  for (y = 0; y < fieldHeight; ++y) {
+    for (x = 0; x < fieldWidth; ++x) {
+      field[y][x] = 0;
+    }
+  }
+}
+
+void initializeScore() {
+  currentScore = 0;
+}
+
+void initializeCurrentPiece() {
+  int x;
+  int y;
+
+  currentPieceType = rand() % 7;
+
+  for (y = 0; y < 4; ++y) {
+    for (x = 0; x < 4; ++x) {
+      currentPiece[y][x] = pieces[currentPieceType][y][x];
+    }
+  }
+
+  currentPositionX = fieldWidth / 2 - 2;
+  currentPositionY = 0;
+}
+
+bool checkCollision(int newPositionX, int newPositionY, int newPiece[4][4]) {
+  int x;
+  int y;
+  int fieldPositionX;
+  int fieldPositionY;
+
+  for (y = 0; y < 4; ++y) {
+    for (x = 0; x < 4; ++x) {
+      if (newPiece[y][x] != 0) {
+        fieldPositionX = newPositionX + x;
+        fieldPositionY = newPositionY + y;
+
+        if (fieldPositionX < 0 ||
+            fieldPositionX >= fieldWidth ||
+            fieldPositionY >= fieldHeight) {
+          return true;
+        }
+
+        if (fieldPositionY >= 0 &&
+            field[fieldPositionY][fieldPositionX] != 0) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+void lockPiece() {
+  int x;
+  int y;
+  int fieldPositionX;
+  int fieldPositionY;
+
+  for (y = 0; y < 4; ++y) {
+    for (x = 0; x < 4; ++x) {
+      if (currentPiece[y][x] != 0) {
+        fieldPositionX = currentPositionX + x;
+        fieldPositionY = currentPositionY + y;
+
+        if (fieldPositionY >= 0 &&
+            fieldPositionY < fieldHeight &&
+            fieldPositionX >= 0 &&
+            fieldPositionX < fieldWidth) {
+          field[fieldPositionY][fieldPositionX] = currentPiece[y][x];
+        }
+      }
+    }
+  }
+}
+
+void clearLines() {
+  int x;
+  int y;
+  int targetX;
+  int targetY;
+  bool isLineFull;
+
+  for (y = 0; y < fieldHeight; ++y) {
+    isLineFull = true;
+
+    for (x = 0; x < fieldWidth; ++x) {
+      if (field[y][x] == 0) {
+        isLineFull = false;
+        break;
+      }
+    }
+
+    if (isLineFull) {
+      for (targetY = y; targetY > 0; --targetY) {
+        for (targetX = 0; targetX < fieldWidth; ++targetX) {
+          field[targetY][targetX] = field[targetY - 1][targetX];
+        }
+      }
+
+      for (targetX = 0; targetX < fieldWidth; ++targetX) {
+        field[0][targetX] = 0;
+      }
+
+      currentScore += 100;
+    }
+  }
+}
+
+void spawnNewPiece() {
+  initializeCurrentPiece();
+
+  if (checkCollision(currentPositionX, currentPositionY, currentPiece)) {
+    isGameOver = true;
+  }
+}
+
+void rotatePiece() {
+  int rotatedPiece[4][4];
+  int x;
+  int y;
+
+  for (y = 0; y < 4; ++y) {
+    for (x = 0; x < 4; ++x) {
+      rotatedPiece[y][x] = 0;
+    }
+  }
+
+  for (y = 0; y < 4; ++y) {
+    for (x = 0; x < 4; ++x) {
+      rotatedPiece[x][3 - y] = currentPiece[y][x];
+    }
+  }
+
+  if (!checkCollision(currentPositionX, currentPositionY, rotatedPiece)) {
+    for (y = 0; y < 4; ++y) {
+      for (x = 0; x < 4; ++x) {
+        currentPiece[y][x] = rotatedPiece[y][x];
+      }
+    }
+  }
+}
+
+bool moveDown() {
+  if (!checkCollision(currentPositionX, currentPositionY + 1, currentPiece)) {
+    currentPositionY += 1;
+    return true;
+  }
+
+  lockPiece();
+  clearLines();
+  spawnNewPiece();
+
+  return false;
+}
+
+void moveLeft() {
+  if (!checkCollision(currentPositionX - 1, currentPositionY, currentPiece)) {
+    currentPositionX -= 1;
+  }
+}
+
+void moveRight() {
+  if (!checkCollision(currentPositionX + 1, currentPositionY, currentPiece)) {
+    currentPositionX += 1;
+  }
+}
+
+void drop() {
+  while (moveDown()) {
+  }
+}
+
+void drawGame() {
+  int x;
+  int y;
+  int pieceX;
+  int pieceY;
+  bool isBlock;
+  int fieldPositionX;
+  int fieldPositionY;
+
+  system("cls");
+
+  for (y = 0; y < fieldHeight; ++y) {
+    cout << "|";
+
+    for (x = 0; x < fieldWidth; ++x) {
+      isBlock = false;
+
+      for (pieceY = 0; pieceY < 4; ++pieceY) {
+        for (pieceX = 0; pieceX < 4; ++pieceX) {
+          if (currentPiece[pieceY][pieceX] != 0) {
+            fieldPositionX = currentPositionX + pieceX;
+            fieldPositionY = currentPositionY + pieceY;
+
+            if (fieldPositionX == x && fieldPositionY == y) {
+              isBlock = true;
+            }
+          }
+        }
+      }
+
+      if (field[y][x] != 0 || isBlock) {
+        cout << "#";
+      } else {
+        cout << " ";
+      }
+    }
+
+    cout << "|\n";
+  }
+
+  for (x = 0; x < fieldWidth + 2; ++x) {
+    cout << "-";
+  }
+
+  cout << "\nScore: " << currentScore << "\n";
+}
+
+void processInput() {
+  int pressedKey;
+
+  if (_kbhit()) {
+    pressedKey = _getch();
+
+    switch (pressedKey) {
+      case 'a':
+      case 'A':
+        moveLeft();
+        break;
+      case 'd':
+      case 'D':
+        moveRight();
+        break;
+      case 's':
+      case 'S':
+        moveDown();
+        break;
+      case 'w':
+      case 'W':
+        rotatePiece();
+        break;
+      case ' ':
+        drop();
+        break;
+      case 'x':
+      case 'X':
+        isGameOver = true;
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+int main() {
+  int tick;
+  int tickDelay;
+
+  srand(time(0));
+
+  isGameOver = false;
+  tickDelay = 500;
+  tick = 0;
+
+  initializeField();
+  initializeScore();
+  spawnNewPiece();
+
+  while (!isGameOver) {
+    Sleep(tickDelay);
+    processInput();
+    moveDown();
+    drawGame();
+    
+    tick += 1;
+  }
+
+  cout << "Game Over! Final score: " << currentScore << endl;
+  system("pause");
+
+  return 0;
+}
+
+
+    cout << "Game Over! Final score: " << score << endl;
+    system("pause");
+    return 0;
+
+}
